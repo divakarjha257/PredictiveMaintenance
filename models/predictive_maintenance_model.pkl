@@ -1,0 +1,47 @@
+# Import libraries
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import mean_absolute_error, mean_squared_error
+import pickle
+
+# Load data
+data = pd.read_csv('./data/sensor_data.csv')
+
+# Data preprocessing
+data.fillna(method='ffill', inplace=True)  # Handle missing data
+data['vibration_change'] = data['vibration'].diff()
+data['temp_change'] = data['temperature'].diff()
+data = data.drop(columns=['sensor_id', 'timestamp'])  # Drop unnecessary columns
+
+# Normalize the features
+scaler = MinMaxScaler()
+scaled_data = scaler.fit_transform(data)
+scaled_data = pd.DataFrame(scaled_data, columns=data.columns)
+
+# Split features (X) and target (y)
+X = scaled_data.drop(columns=['RUL'])
+y = scaled_data['RUL']
+
+# Split data into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Train the Random Forest Regressor
+rf_model = RandomForestRegressor(n_estimators=100, random_state=42)
+rf_model.fit(X_train, y_train)
+
+# Evaluate model performance
+y_pred = rf_model.predict(X_test)
+mae = mean_absolute_error(y_test, y_pred)
+mse = mean_squared_error(y_test, y_pred)
+rmse = np.sqrt(mse)
+print(f'MAE: {mae}, MSE: {mse}, RMSE: {rmse}')
+
+# Save the model and scaler
+with open('./models/predictive_maintenance_model.pkl', 'wb') as f:
+    pickle.dump(rf_model, f)
+
+with open('./models/scaler.pkl', 'wb') as f:
+    pickle.dump(scaler, f)
